@@ -71,61 +71,63 @@ export function ViolenceDetection() {
     };
 
     return (
-        <div className="flex h-screen bg-gray-50 text-gray-900 overflow-hidden font-sans">
-            {/* Main Video Grid Area */}
-            <div className="flex-1 p-6 flex flex-col h-full overflow-hidden items-center">
-                <div className="flex items-center gap-4 mb-6 shrink-0 w-full max-w-5xl">
-                    <h1 className="text-2xl font-bold tracking-tight text-gray-900">Administrator Dashboard</h1>
-                    <div className="ml-auto flex items-center gap-2 px-3 py-1 bg-white rounded-full border border-gray-200 shadow-sm">
+        <div className="flex h-full bg-slate-50 text-slate-900 overflow-hidden font-sans">
+            <div className="flex-1 flex flex-col h-full overflow-hidden">
+                {/* Navbar */}
+                <div className="flex items-center gap-4 px-6 py-4 bg-primary-600 shrink-0 w-full shadow-md z-20">
+                    <h1 className="text-xl font-bold tracking-tight text-white">Administrator Dashboard</h1>
+                    <div className="ml-auto flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-sm rounded-full border border-white/20 shadow-sm transition-colors hover:bg-white/20">
                         <span className="relative flex h-2 w-2">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                         </span>
-                        <span className="text-xs font-mono text-gray-500 uppercase">Online</span>
+                        <span className="text-xs font-mono text-white/90 uppercase font-semibold">Online</span>
                     </div>
                 </div>
 
-                {loading && <p className="text-gray-500">Initializing feeds...</p>}
+                <div className="flex-1 p-6 overflow-hidden flex flex-col min-h-0">
+                    {loading && <p className="text-gray-500 mb-4">Initializing feeds...</p>}
 
-                <div className="grid grid-cols-2 gap-4 h-full overflow-y-auto pb-20 pr-2 w-full max-w-5xl">
-                    {videos.map((video) => {
-                        const state = cameraStates[video.id];
-                        const dangerous = isDanger(state?.label);
+                    <div className="grid grid-cols-2 grid-rows-2 gap-4 h-full w-full min-h-0">
+                        {videos.map((video) => {
+                            const state = cameraStates[video.id];
+                            const dangerous = isDanger(state?.label);
 
-                        return (
-                            <Card key={video.id} className={cn(
-                                "overflow-hidden border transition-all bg-white h-min shadow-sm hover:shadow-md",
-                                dangerous ? "border-red-500 ring-4 ring-red-500/10" : "border-gray-200"
-                            )}>
-                                <CardContent className="p-0 aspect-video relative group">
-                                    <img
-                                        src={`${API_BASE_URL}/api/video_feed/${video.filename}`}
-                                        alt={`Feed ${video.name}`}
-                                        className="w-full h-full object-contain bg-black"
-                                        loading="lazy"
-                                    />
+                            return (
+                                <Card key={video.id} className={cn(
+                                    "overflow-hidden border transition-all bg-white h-full shadow-sm hover:shadow-md",
+                                    dangerous ? "border-red-500 ring-4 ring-red-500/10" : "border-gray-200"
+                                )}>
+                                    <CardContent className="p-0 h-full relative group bg-black flex items-center justify-center">
+                                        <img
+                                            src={`${API_BASE_URL}/api/video_feed/${video.filename}`}
+                                            alt={`Feed ${video.name}`}
+                                            className="w-full h-full object-contain bg-black"
+                                            loading="lazy"
+                                        />
 
-                                    {/* Overlay for ID only */}
-                                    <div className="absolute top-2 left-2 px-2 py-0.5 bg-white/90 backdrop-blur-sm rounded text-[10px] font-mono text-gray-900 border border-gray-200 shadow-sm">
-                                        {video.name}
-                                    </div>
+                                        {/* Overlay for ID only */}
+                                        <div className="absolute top-2 left-2 px-2 py-0.5 bg-white/90 backdrop-blur-sm rounded text-[10px] font-mono text-gray-900 border border-gray-200 shadow-sm">
+                                            {video.name}
+                                        </div>
 
-                                    {/* Danger Indicator Overlay */}
-                                    {dangerous && (
-                                        <div className="absolute inset-0 border-4 border-red-500 animate-pulse pointer-events-none"></div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        );
-                    })}
+                                        {/* Danger Indicator Overlay */}
+                                        {dangerous && (
+                                            <div className="absolute inset-0 border-4 border-red-500 animate-pulse pointer-events-none"></div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
 
             {/* Sidebar - Right Panel */}
-            <div className="w-96 bg-white border-l border-gray-200 flex flex-col shrink-0 z-10 shadow-xl">
-                <div className="p-4 border-b border-gray-200 bg-gray-50/50 backdrop-blur">
-                    <h2 className="text-sm font-semibold text-gray-600 flex items-center gap-2">
-                        <Activity className="h-4 w-4" />
+            <div className="w-96 bg-white border-l border-primary-100 flex flex-col shrink-0 z-10 shadow-xl">
+                <div className="p-4 border-b border-primary-100 bg-primary-50/80 backdrop-blur">
+                    <h2 className="text-sm font-semibold text-primary-900 flex items-center gap-2">
+                        <Activity className="h-4 w-4 text-primary-600" />
                         Live Status Feed
                     </h2>
                 </div>
@@ -139,12 +141,12 @@ export function ViolenceDetection() {
                         return (
                             <div key={video.id} className={cn(
                                 "p-3 rounded-lg border flex flex-col gap-2 transition-colors shadow-sm",
-                                dangerous ? "bg-red-50 border-red-200" : "bg-white border-gray-200"
+                                dangerous ? "bg-red-50 border-red-200" : "bg-white border-primary-100"
                             )}>
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                        <Camera className="h-3 w-3 text-gray-400" />
-                                        <span className="text-sm font-mono font-medium text-gray-700">{video.name}</span>
+                                        <Camera className="h-3 w-3 text-primary-400" />
+                                        <span className="text-sm font-mono font-medium text-slate-700">{video.name}</span>
                                     </div>
                                     {hasData && (
                                         dangerous
