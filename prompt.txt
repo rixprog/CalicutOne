@@ -1,0 +1,13 @@
+--Project Title: Calicut OneDrive
+--Project Description: "This is a web app for helping users within calicut to optimise their daily travels integrated with public saftey."
+--Project Stack: React+Vite+Jsx+Tailwind,sqlite.
+--Backend: Fast Api,python
+--database: sqlite , the database should have user crednetial columns(name,email,password,location).
+--Website theme: Light theme with purplr shade and shadow effects for divs . curved divs. lokks stunning and pleasent to eye.
+-- keep global.css should be consistent in colours.
+-- Should be responsive for mobile and desktop.
+--Website Layout: 
+ - Top sticky navbar with ceneter aligned and curved edges on left logo 'CalicutOne' center Home,Administartion on right Volunteer register button, login/signup buttons.
+ - Home page:
+   -Layout is split into two columns for destops with ratio 4:6 . The left column is consist of four divs of differnent colours and right column consist of maps(leaflet js + openStreetMap).
+   -below the map there is row with 2 columns in ration 7: 3 .the left column is basically a chat box with send button and right column consist of a SOS button . 
