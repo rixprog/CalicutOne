@@ -3,3 +3,4 @@ venv
 /Backend/__pycache__
 /Backend/users.db
 /backendreffernece
+/backendcopy/users.db
