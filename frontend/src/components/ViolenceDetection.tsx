@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
-import { AlertOctagon, Activity, ShieldCheck, ShieldAlert, Camera } from "lucide-react";
+import { Activity, ShieldCheck, ShieldAlert, Camera } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const API_BASE_URL = 'http://localhost:5000';
@@ -21,7 +21,7 @@ export function ViolenceDetection() {
     const [videos, setVideos] = useState<Video[]>([]);
     const [cameraStates, setCameraStates] = useState<Record<string, CameraState>>({});
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+
 
     useEffect(() => {
         // Fetch video list
@@ -33,7 +33,6 @@ export function ViolenceDetection() {
             })
             .catch(err => {
                 console.error("Error fetching videos:", err);
-                setError(err.message);
                 setLoading(false);
             });
 
@@ -71,19 +70,9 @@ export function ViolenceDetection() {
     };
 
     return (
-        <div className="flex h-full bg-slate-50 text-slate-900 overflow-hidden font-sans">
+        <div className="flex h-full bg-slate-50 text-slate-900 overflow-hidden font-sans w-full">
             <div className="flex-1 flex flex-col h-full overflow-hidden">
-                {/* Navbar */}
-                <div className="flex items-center gap-4 px-6 py-4 bg-primary-600 shrink-0 w-full shadow-md z-20">
-                    <h1 className="text-xl font-bold tracking-tight text-white">Administrator Dashboard</h1>
-                    <div className="ml-auto flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-sm rounded-full border border-white/20 shadow-sm transition-colors hover:bg-white/20">
-                        <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                        </span>
-                        <span className="text-xs font-mono text-white/90 uppercase font-semibold">Online</span>
-                    </div>
-                </div>
+
 
                 <div className="flex-1 p-6 overflow-hidden flex flex-col min-h-0">
                     {loading && <p className="text-gray-500 mb-4">Initializing feeds...</p>}
