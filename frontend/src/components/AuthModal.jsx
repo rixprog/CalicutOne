@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_BASE_URL } from '../config';
 
 const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
     const [isLogin, setIsLogin] = useState(true);
@@ -25,7 +26,7 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
         setError('');
         setLoading(true);
 
-        const url = isLogin ? 'http://127.0.0.1:8000/login' : 'http://127.0.0.1:8000/register';
+        const url = isLogin ? `${API_BASE_URL}/login` : `${API_BASE_URL}/register`;
 
         try {
             const response = await fetch(url, {

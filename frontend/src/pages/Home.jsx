@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { API_BASE_URL } from '../config';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -182,7 +183,7 @@ const Home = () => {
                 body.tour_data = tourFormData;
             }
 
-            const response = await fetch('http://127.0.0.1:8000/chat', {
+            const response = await fetch(`${API_BASE_URL}/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
@@ -324,7 +325,7 @@ const Home = () => {
                 if (nextIdx >= travelState.segments.length) {
                     console.log("Trip Completed. Resetting state...");
                     // Call backend to reset state
-                    fetch('http://127.0.0.1:8000/reset', {
+                        fetch(`${API_BASE_URL}/reset`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ message: "RESET", session_id: sessionId })
@@ -481,7 +482,7 @@ const Home = () => {
         setIsLoading(true);
 
         try {
-            const response = await fetch('http://127.0.0.1:8000/chat', {
+            const response = await fetch(`${API_BASE_URL}/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
