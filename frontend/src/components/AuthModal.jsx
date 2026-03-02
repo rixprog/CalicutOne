@@ -69,7 +69,7 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
                 {/* Header Section */}
                 <div className="text-center mb-10">
                     <h1 className="text-4xl font-black text-gray-900 mb-2 tracking-tight">
-                        Calicut<span className="text-primary-600">One</span>
+                        Route<span className="text-primary-600">ai</span>
                     </h1>
                     <p className="text-gray-500 font-medium text-lg">Your Smart City Companion</p>
                 </div>
