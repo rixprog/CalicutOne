@@ -1,7 +1,14 @@
 [project]
 name = "calicutone"
 version = "0.1.0"
-description = "Add your description here"
+description = "Agentic Travel Planner & Route Intelligence Engine"
 readme = "README.md"
-requires-python = ">=3.14"
-dependencies = []
+requires-python = ">=3.10"
+
+dependencies = [
+    "langchain>=0.1.0",
+    "langchain-google-genai>=0.0.1",
+    "google-genai>=0.3.0",
+    "python-dotenv>=1.0.0",
+    "geopy>=2.3.0",
+]
