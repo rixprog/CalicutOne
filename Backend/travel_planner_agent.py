@@ -99,6 +99,80 @@ class TravelState:
 # SERVICES
 # ============================================================================
 
+@dataclass
+class TourActivity:
+    time: str
+    activity: str
+    location_name: str
+    description: str
+    cost_estimate: str
+    type: str # 'visit', 'food', 'travel', 'hotel'
+    geo_location: Optional[Location] = None
+
+    def to_dict(self):
+        d = asdict(self)
+        if self.geo_location:
+            d['geo_location'] = self.geo_location.to_dict()
+        return d
+
+@dataclass
+class TourDay:
+    day_number: int
+    date: Optional[str]
+    activities: List[TourActivity] = field(default_factory=list)
+
+    def to_dict(self):
+        return {
+            "day_number": self.day_number,
+            "date": self.date,
+            "activities": [a.to_dict() for a in self.activities]
+        }
+
+@dataclass
+class TourPlan:
+    title: str
+    overview: str
+    days: List[TourDay] = field(default_factory=list)
+    hotels: List[Suggestion] = field(default_factory=list)
+    restaurants: List[Suggestion] = field(default_factory=list)
+    budget_summary: str = ""
+    
+    def to_dict(self):
+        return {
+            "title": self.title,
+            "overview": self.overview,
+            "days": [d.to_dict() for d in self.days],
+            "hotels": [h.to_dict() for h in self.hotels],
+            "restaurants": [r.to_dict() for r in self.restaurants],
+            "budget_summary": self.budget_summary
+        }
+
+@dataclass
+class TravelState:
+    starting_point: Optional[Location] = None
+    destinations: List[Location] = field(default_factory=list)
+    transport_mode: str = "car"
+    current_suggestions: List[Suggestion] = field(default_factory=list)
+    segments: List[TripSegment] = field(default_factory=list)
+    preferences: Dict[str, Any] = field(default_factory=dict)
+    tour_plan: Optional[TourPlan] = None
+    status_message: Optional[str] = None # Feedback message for the user
+    
+    def to_dict(self):
+        return {
+            "starting_point": self.starting_point.to_dict() if self.starting_point else None,
+            "destinations": [d.to_dict() for d in self.destinations],
+            "transport_mode": self.transport_mode,
+            "suggestions": [s.to_dict() for s in self.current_suggestions],
+            "segments": [s.to_dict() for s in self.segments],
+            "tour_plan": self.tour_plan.to_dict() if self.tour_plan else None,
+            "status_message": self.status_message
+        }
+
+# ============================================================================
+# SERVICES
+# ============================================================================
+
 class GeoLocationService:
     """Handles geocoding and validation"""
     def __init__(self, timeout: int = 5):
@@ -131,6 +205,40 @@ class TravelPlannerAgent:
         self.geo_service = GeoLocationService()
         self.geoapify = GeoapifyService()
         self.ors = OpenRouteService()
+        
+    def _get_coordinates_from_llm(self, query: str, context: Optional[str] = None) -> Optional[Location]:
+        """
+        Ask LLM for coordinates as a last resort.
+        """
+        prompt = f"""
+        I need the latitude and longitude for a place called "{query}".
+        Context: {context or 'In or near Kozhikode, Kerala, India'}
+        
+        If you are confident about the location, return a JSON object:
+        {{
+            "name": "Correct Place Name",
+            "latitude": 11.123,
+            "longitude": 75.123
+        }}
+        
+        If you are NOT confident, return null.
+        Output MUST be valid JSON only.
+        """
+        try:
+            resp = self.llm.invoke(prompt)
+            content = resp.content.strip()
+            # Clean up code blocks if present
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0].strip()
+                
+            data = json.loads(content)
+            if data and data.get('latitude'):
+                return Location(data['name'], float(data['latitude']), float(data['longitude']))
+        except Exception as e:
+            print(f"LLM Geocoding failed: {e}")
+        return None
         
     def _parse_user_intent(self, state: TravelState, user_input: str) -> Dict:
         """
@@ -309,6 +417,7 @@ class TravelPlannerAgent:
                     
             elif action == "ADD_DESTINATION":
                 loc_name = params.get("location_name")
+                state.status_message = None # Reset
                 
                 # Check cache/suggestions first to ensure we pick the one the user sees
                 found_suggestion = None
@@ -324,6 +433,7 @@ class TravelPlannerAgent:
                 if found_suggestion and found_suggestion.location:
                     print(f"DEBUG: Using cached suggestion for '{loc_name}'")
                     state.destinations.append(found_suggestion.location)
+                    state.status_message = f"Added {found_suggestion.name} to route."
                 else:
                     # Standard Geocoding Flow
                     # Determine bias point (last destination or start)
@@ -335,31 +445,37 @@ class TravelPlannerAgent:
                         bias = (last.latitude, last.longitude)
                     elif state.starting_point:
                         bias = (state.starting_point.latitude, state.starting_point.longitude)
-                        # Try to get city context from start point name if possible
-                        # Simple heuristic: if start is "Calicut Beach", context is "Calicut"
-                        # But for now, let's just use the query enhancement
                 
-                # Try Geoapify with bias
-                coords = self.geoapify.geocode_place(loc_name, bias_point=bias)
-                if coords:
-                    state.destinations.append(Location(loc_name, coords[0], coords[1]))
-                else:
-                    # Fallback to Nominatim
-                    # IMPROVEMENT: Add context to query if possible to avoid "Auckland" issue
-                    query = loc_name
-                    if state.starting_point and "kozhikode" in state.starting_point.name.lower():
-                        query += ", Kozhikode"
-                    elif state.starting_point and "calicut" in state.starting_point.name.lower():
-                        query += ", Calicut"
-                    
-                    loc = self.geo_service.geocode(query)
-                    if not loc and query != loc_name: # Retry without context if failed
-                        loc = self.geo_service.geocode(loc_name)
+                    # Try Geoapify with bias
+                    coords = self.geoapify.geocode_place(loc_name, bias_point=bias)
+                    if coords:
+                        state.destinations.append(Location(loc_name, coords[0], coords[1]))
+                        state.status_message = f"Added {loc_name} to route."
+                    else:
+                        # Fallback to Nominatim
+                        query = loc_name
+                        if state.starting_point and "kozhikode" in state.starting_point.name.lower():
+                            query += ", Kozhikode"
+                        elif state.starting_point and "calicut" in state.starting_point.name.lower():
+                            query += ", Calicut"
                         
-                    if loc: 
-                        # Update name to original if we found it using extended query
-                        loc.name = loc_name 
-                        state.destinations.append(loc)
+                        loc = self.geo_service.geocode(query)
+                        if not loc and query != loc_name: # Retry without context if failed
+                            loc = self.geo_service.geocode(loc_name)
+                            
+                        if loc: 
+                            loc.name = loc_name 
+                            state.destinations.append(loc)
+                            state.status_message = f"Added {loc_name} to route."
+                        else:
+                            # Final Fallback: Ask LLM
+                            print(f"DEBUG: Asking LLM for coordinates of '{loc_name}'")
+                            llm_loc = self._get_coordinates_from_llm(loc_name)
+                            if llm_loc:
+                                state.destinations.append(llm_loc)
+                                state.status_message = f"Added {loc_name} (approximate location) to route."
+                            else:
+                                state.status_message = f"Could not find location: {loc_name}"
 
             elif action == "INSERT_DESTINATION":
                 state.suggestions = [] # Clear suggestions on route update
@@ -580,8 +696,168 @@ class TravelPlannerAgent:
             
         state.segments = new_segments
 
-    def plan_travel(self, user_input: str, state: TravelState) -> str:
+    def generate_strict_tour_plan(self, details: Dict[str, Any], state: TravelState) -> Optional[TourPlan]:
+        """
+        Generates a detailed, structured tour plan based on form data.
+        details: {
+            "destination": str,
+            "duration": str,
+            "group_type": str,
+            "budget": str,
+            "food_pref": str,
+            "activity_types": str
+        }
+        """
+        prompt = f"""
+        Generate a detailed {details.get('duration')} tour plan for {details.get('destination')}.
+        
+        Context:
+        - Group: {details.get('group_type')}
+        - Budget: ₹{details.get('budget')}
+        - Food Preference: {details.get('food_pref')}
+        - Interests: {details.get('activity_types')}
+        
+        Output format MUST be a valid JSON object structure:
+        {{
+            "title": "Trip Title",
+            "overview": "Short summary of the trip experience...",
+            "budget_summary": "Estimated breakdown...",
+            "days": [
+                {{
+                    "day_number": 1,
+                    "date": "Day 1",
+                    "activities": [
+                        {{
+                            "time": "09:00 AM",
+                            "activity": "Visit [Place Name]",
+                            "location_name": "[Accurate Place Name for Geocoding]",
+                            "description": "What to do there...",
+                            "cost_estimate": "₹500",
+                            "type": "visit" 
+                        }},
+                        ... (include lunch/dinner as type 'food')
+                    ]
+                }},
+                ...
+            ],
+            "hotels": [
+                {{ "name": "Hotel Name", "description": "Why it fits", "budget": "₹3500/night", "rating": 4.5, "address": "Approx area" }}
+            ],
+            "restaurants": [
+                {{ "name": "Restaurant Name", "description": "Specialty", "budget": "₹800/person", "rating": 4.2, "address": "Locality" }}
+            ]
+        }}
+        
+        User 'type'enum for activity: 'visit', 'food', 'travel', 'hotel', 'other'.
+        IMPORTANT: Provide accurate 'latitude' and 'longitude' for ALL locations (activities, hotels, restaurants) so they can be plotted on a map.
+        For 'budget' fields in hotels/restaurants, provide an estimated cost in INR (e.g., '₹2500') instead of symbols like '$$'.
+        """
+        
+        try:
+            response = self.llm.invoke([HumanMessage(content=prompt)])
+            content = response.content.strip()
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0]
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0]
+            
+            data = json.loads(content)
+            
+            # Convert JSON to Objects
+            days = []
+            for d in data.get('days', []):
+                acts = []
+                for a in d.get('activities', []):
+                    # Use LLM provided coordinates
+                    geo_location = None
+                    lat = a.get('latitude')
+                    lon = a.get('longitude')
+                    
+                    if lat and lon:
+                        try:
+                            geo_location = Location(name=a.get('location_name', ''), latitude=float(lat), longitude=float(lon))
+                        except:
+                            pass
+                        
+                    acts.append(TourActivity(
+                        time=a.get('time', ''),
+                        activity=a.get('activity', ''),
+                        location_name=a.get('location_name', ''),
+                        description=a.get('description', ''),
+                        cost_estimate=a.get('cost_estimate', ''),
+                        type=a.get('type', 'other'),
+                        geo_location=geo_location 
+                    ))
+                days.append(TourDay(
+                    day_number=d.get('day_number', 1),
+                    date=d.get('date', ''),
+                    activities=acts
+                ))
+            
+            # Hotels & Restaurants (Convert to Suggestions)
+            hotels = []
+            for h in data.get('hotels', []):
+                hotel_loc = None
+                if h.get('latitude') and h.get('longitude'):
+                    try:
+                        hotel_loc = Location(name=h.get('name'), latitude=float(h.get('latitude')), longitude=float(h.get('longitude')))
+                    except:
+                        pass
+
+                hotels.append(Suggestion(
+                    id=0, name=h.get('name'), type='accommodation.hotel', 
+                    description=h.get('description'), rating=h.get('rating'), 
+                    budget=h.get('budget'), address=h.get('address'),
+                    location=hotel_loc
+                ))
+                
+            restaurants = []
+            for r in data.get('restaurants', []):
+                rest_loc = None
+                if r.get('latitude') and r.get('longitude'):
+                    try:
+                        rest_loc = Location(name=r.get('name'), latitude=float(r.get('latitude')), longitude=float(r.get('longitude')))
+                    except:
+                        pass
+
+                restaurants.append(Suggestion(
+                    id=0, name=r.get('name'), type='catering.restaurant', 
+                    description=r.get('description'), rating=r.get('rating'), 
+                    budget=r.get('budget'), address=r.get('address'),
+                    location=rest_loc
+                ))
+
+            # Post-processing: No longer needing slow loop as we trust LLM
+
+            return TourPlan(
+                title=data.get('title', 'Your Trip'),
+                overview=data.get('overview', ''),
+                days=days,
+                hotels=hotels,
+                restaurants=restaurants,
+                budget_summary=data.get('budget_summary', '')
+            )
+            
+        except Exception as e:
+            print(f"Tour Generation Error: {e}")
+            return None
+
+    def plan_travel(self, user_input: str, state: TravelState, tour_data: Optional[Dict] = None) -> str:
         """Entry point for the interactive loop"""
+        if tour_data:
+            print("DEBUG: Generating Tour Mode Plan")
+            tour_plan = self.generate_strict_tour_plan(tour_data, state)
+            if tour_plan:
+                state.tour_plan = tour_plan
+                # Also update state with destination to center map
+                if tour_data.get('destination'):
+                    # Mock 'ADD_DESTINATION' logic to set viewing area
+                    coords = self.geoapify.geocode_place(tour_data['destination'])
+                    if coords:
+                        state.destinations = [Location(tour_data['destination'], coords[0], coords[1])]
+            
+            return json.dumps(state.to_dict())
+            
         updated_state = self.update_state(state, user_input)
         return json.dumps(updated_state.to_dict())
 

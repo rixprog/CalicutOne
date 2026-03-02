@@ -37,21 +37,15 @@ const Navbar = ({ toggleSidebar, user, onOpenAuth, onLogout }) => {
                             </svg>
                         </button>
                         <div className="text-2xl font-bold tracking-wider cursor-pointer hover:text-primary-100 transition-colors">
-                            CalicutOne
+                            Route.ai
                         </div>
                     </div>
 
-                    {/* Desktop Links */}
-                    <div className="hidden md:flex items-center gap-8 font-medium">
-                        <a href="#" className="hover:text-primary-200 transition-colors">Home</a>
-                        <a href="#" className="hover:text-primary-200 transition-colors">Administration</a>
-                    </div>
+
 
                     {/* Auth & Profile Section */}
                     <div className="flex items-center gap-4">
-                        <button className="hidden md:block bg-white/10 backdrop-blur-sm border border-white/20 text-white px-4 py-2 rounded-full font-semibold hover:bg-white/20 transition-all shadow-sm">
-                            Volunteer Register
-                        </button>
+
 
                         {user ? (
                             <div className="flex items-center gap-3 bg-white/10 pl-4 pr-2 py-1.5 rounded-full border border-white/10 backdrop-blur-sm">

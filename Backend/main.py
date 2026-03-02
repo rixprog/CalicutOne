@@ -1,8 +1,9 @@
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 import uuid
+import json
 import logging
 import hashlib
 from sqlalchemy.orm import Session
@@ -122,6 +123,7 @@ agent = TravelPlannerAgent()
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
+    tour_data: Optional[Dict[str, Any]] = None
 
 class ChatResponse(BaseModel):
     response: dict
@@ -137,11 +139,24 @@ async def chat_endpoint(request: ChatRequest):
             print(f"Created new session: {session_id}")
         
         current_state = sessions[session_id]
-        updated_state = agent.update_state(current_state, request.message)
-        sessions[session_id] = updated_state
+        
+        # Pass tour_data if present
+        if request.tour_data:
+            updated_state_json = agent.plan_travel(request.message, current_state, tour_data=request.tour_data)
+        else:
+            updated_state_json = agent.plan_travel(request.message, current_state)
+            
+        updated_state_dict = json.loads(updated_state_json)
+        
+        # Update state object from dict (Since plan_travel returns JSON string now to be consistent)
+        # Wait, plan_travel in agent returns JSON string, but we need to update our in-memory object too.
+        # The agent.plan_travel actually modifies the state object in place AND returns JSON.
+        # But let's verify if 'plan_travel' logic I added is correct.
+        # Yes, I added 'state.tour_plan = tour_plan' which modifies the object ref.
+        # So current_state is already updated.
         
         return ChatResponse(
-            response=updated_state.to_dict(),
+            response=updated_state_dict,
             session_id=session_id
         )
     except Exception as e:
